@@ -8,7 +8,7 @@ export default {
       file: 'dist/low-noise-contact-suite.js',
       format: 'umd',
       name: 'LowNoiseContactSuite',
-      exports: 'default',    // ← usa la exportación por defecto como global
+      exports: 'default',       
       sourcemap: true,
     },
     {
