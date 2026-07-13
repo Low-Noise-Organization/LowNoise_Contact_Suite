@@ -1,5 +1,5 @@
-import typescript from 'rollup-plugin-typescript2';
-import { terser } from 'rollup-plugin-terser';
+import typescript from '@rollup/plugin-typescript';
+import terser from '@rollup/plugin-terser';
 
 export default {
   input: 'src/index.ts',
@@ -8,6 +8,7 @@ export default {
       file: 'dist/low-noise-contact-suite.js',
       format: 'umd',
       name: 'LowNoiseContactSuite',
+      exports: 'default',    // ← usa la exportación por defecto como global
       sourcemap: true,
     },
     {
@@ -18,7 +19,9 @@ export default {
   ],
   plugins: [
     typescript({
-      useTsconfigDeclarationDir: true,
+      tsconfig: './tsconfig.json',
+      declaration: true,
+      declarationDir: './dist',
     }),
     terser(),
   ],

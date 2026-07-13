@@ -1,2 +1,3 @@
-export { LowNoiseContactSuite } from './core/LowNoiseContactSuite';
+import { LowNoiseContactSuite } from './core/LowNoiseContactSuite';
 export type { ContactSuiteConfig, ChannelConfig, FieldConfig, ChannelType, UIConfig, AntispamConfig } from './core/types';
+export default LowNoiseContactSuite;
