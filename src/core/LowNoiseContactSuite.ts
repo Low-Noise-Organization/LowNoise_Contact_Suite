@@ -1,4 +1,4 @@
-import type { ContactSuiteConfig, ChannelConfig, FieldConfig, ChannelType } from './types';
+import type { ContactSuiteConfig, ChannelConfig, FieldConfig, ChannelType, UIConfig, AntispamConfig } from './types';
 import { resolveLanguage, defaultI18n } from './i18n';
 import { adapters } from './adapters';
 import { WhatsAppAdapter } from '../adapters/WhatsAppAdapter';
@@ -40,8 +40,21 @@ const CHANNEL_META: Record<string, { color: string; icon: string }> = {
   },
 };
 
+interface InternalConfig {
+  container: string | HTMLElement;
+  channels: ChannelConfig[];
+  fields: FieldConfig[];
+  ui: UIConfig; // Cambio aquí: no Required
+  antispam: Required<AntispamConfig>;
+  i18n?: Partial<import('./types').I18nStrings>; // Cambio aquí: Partial<I18nStrings>
+  onBeforeSubmit?: (channel: string, formData: FormData) => boolean | void;
+  onSuccess?: (channel: string, response: any, formData: FormData) => void;
+  onError?: (channel: string, error: Error, formData: FormData) => void;
+  onChannelChange?: (channel: string) => void;
+}
+
 export class LowNoiseContactSuite {
-  private config: Required<ContactSuiteConfig>;
+  private config: InternalConfig;
   private container: HTMLElement;
   private currentChannel: ChannelType;
   private loadTime: number;
@@ -76,29 +89,32 @@ export class LowNoiseContactSuite {
     this.applyTheme();
   }
 
-  private normalizeConfig(cfg: ContactSuiteConfig): Required<ContactSuiteConfig> {
-    const defaults: Required<ContactSuiteConfig> = {
-      container: '',
-      channels: [],
-      fields: [
-        { name: 'name', type: 'text', label: 'Nombre', required: true },
-        { name: 'email', type: 'email', label: 'Email', required: true },
-        { name: 'message', type: 'textarea', label: 'Mensaje', required: true },
-      ],
-      ui: { theme: 'default', toggleChannel: undefined, resetOnSuccess: true, btnText: undefined },
-      antispam: { honeypot: true, minTime: 3 },
-      i18n: {},
-      onBeforeSubmit: undefined,
-      onSuccess: undefined,
-      onError: undefined,
-      onChannelChange: undefined,
+  private normalizeConfig(cfg: ContactSuiteConfig): InternalConfig {
+    const defaultFields: FieldConfig[] = [
+      { name: 'name', type: 'text', label: 'Nombre', required: true },
+      { name: 'email', type: 'email', label: 'Email', required: true },
+      { name: 'message', type: 'textarea', label: 'Mensaje', required: true },
+    ];
+    return {
+      container: cfg.container,
+      channels: cfg.channels.length ? cfg.channels : [{ type: 'emailjs' }],
+      fields: cfg.fields || defaultFields,
+      ui: {
+        theme: cfg.ui?.theme || 'default',
+        toggleChannel: cfg.ui?.toggleChannel !== undefined ? cfg.ui.toggleChannel : cfg.channels.length > 1,
+        resetOnSuccess: cfg.ui?.resetOnSuccess !== false,
+        btnText: cfg.ui?.btnText, // puede ser undefined, ahora es válido
+      },
+      antispam: {
+        honeypot: cfg.antispam?.honeypot !== false,
+        minTime: cfg.antispam?.minTime || 3,
+      },
+      i18n: cfg.i18n, // ahora coincide con el tipo Partial<I18nStrings> | undefined
+      onBeforeSubmit: cfg.onBeforeSubmit,
+      onSuccess: cfg.onSuccess,
+      onError: cfg.onError,
+      onChannelChange: cfg.onChannelChange,
     };
-
-    const merged = { ...defaults, ...cfg, ui: { ...defaults.ui, ...cfg.ui }, antispam: { ...defaults.antispam, ...cfg.antispam } };
-    if (merged.channels.length === 0) merged.channels = [{ type: 'emailjs' }];
-    if (merged.ui.toggleChannel === undefined) merged.ui.toggleChannel = merged.channels.length > 1;
-    if (!merged.fields) merged.fields = defaults.fields;
-    return merged as Required<ContactSuiteConfig>;
   }
 
   private buildI18n(): Record<string, string> {
@@ -127,7 +143,6 @@ export class LowNoiseContactSuite {
     return this.container.tagName === 'FORM' || !!this.container.querySelector('form');
   }
 
-  // ================== Tema ==================
   private applyTheme(): void {
     const theme = this.config.ui.theme;
     const root = this.rootEl || this.container;
@@ -145,13 +160,11 @@ export class LowNoiseContactSuite {
     this.formEl.classList.add('lcs-form');
     this.rootEl = this.formEl.parentElement || this.container;
 
-    // Inyectar toggle si es necesario
     if (this.config.ui.toggleChannel && this.config.channels.length > 1) {
       const toggle = this.buildToggle();
       this.formEl.parentNode?.insertBefore(toggle, this.formEl);
     }
 
-    // Si no hay botón de submit, creamos uno (opcional)
     this.btnEl = this.formEl.querySelector('button[type="submit"], input[type="submit"]') as HTMLButtonElement;
     if (!this.btnEl) {
       this.btnEl = document.createElement('button');
@@ -161,7 +174,6 @@ export class LowNoiseContactSuite {
       this.formEl.appendChild(this.btnEl);
     }
 
-    // Status container
     this.statusEl = this.formEl.querySelector('.lcs-status') as HTMLDivElement;
     if (!this.statusEl) {
       this.statusEl = document.createElement('div');
@@ -170,8 +182,7 @@ export class LowNoiseContactSuite {
       this.formEl.appendChild(this.statusEl);
     }
 
-    // Honeypot (si no existe)
-    if (this.config.antispam.honeypot !== false && !this.formEl.querySelector(`[name="${this.honeypotName}"]`)) {
+    if (this.config.antispam.honeypot && !this.formEl.querySelector(`[name="${this.honeypotName}"]`)) {
       const hp = document.createElement('div');
       hp.className = 'lcs-honeypot';
       hp.setAttribute('aria-hidden', 'true');
@@ -179,15 +190,14 @@ export class LowNoiseContactSuite {
       this.formEl.appendChild(hp);
     }
 
-    // Mapear campos existentes a FieldConfig
+    // Mapear campos existentes
     this.config.fields.forEach(field => {
       const input = this.formEl.querySelector(`[name="${field.name}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
       if (input) {
         input.required = field.required || false;
-        if (field.placeholder) input.placeholder = field.placeholder;
-        if (field.type === 'email') input.type = 'email';
-        else if (field.type === 'tel') input.type = 'tel';
-        // Añadir atributo data-channels si está configurado
+        if (field.placeholder && (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) {
+          input.placeholder = field.placeholder;
+        }
         if (field.channels) {
           input.setAttribute('data-channels', field.channels.join(','));
         }
@@ -195,7 +205,7 @@ export class LowNoiseContactSuite {
     });
   }
 
-  // ================== Renderizado (modo generación) ==================
+  // ================== Renderizado ==================
   private renderForm(): void {
     const root = document.createElement('div');
     root.className = 'lcs-root';
@@ -214,7 +224,7 @@ export class LowNoiseContactSuite {
       this.formEl.appendChild(this.buildField(field));
     });
 
-    if (this.config.antispam.honeypot !== false) {
+    if (this.config.antispam.honeypot) {
       const hp = document.createElement('div');
       hp.className = 'lcs-honeypot';
       hp.setAttribute('aria-hidden', 'true');
@@ -303,8 +313,10 @@ export class LowNoiseContactSuite {
 
     input.id = `lcs-${field.name}`;
     input.name = field.name;
-    input.placeholder = field.placeholder || '';
     input.required = field.required || false;
+    if (field.placeholder && (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) {
+      input.placeholder = field.placeholder;
+    }
     wrapper.appendChild(input);
 
     const errorEl = document.createElement('span');
@@ -356,8 +368,9 @@ export class LowNoiseContactSuite {
       };
 
       btn.addEventListener('click', handleSelect);
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+      btn.addEventListener('keydown', (e: Event) => {
+        const keyboardEvent = e as KeyboardEvent;
+        if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
           e.preventDefault();
           handleSelect();
         }
@@ -388,7 +401,6 @@ export class LowNoiseContactSuite {
       this.btnEl.className = this.btnEl.className.replace(/lcs-btn--\w+/g, '').trim() + ' lcs-btn lcs-btn--' + this.currentChannel;
     }
 
-    // Ocultar/mostrar campos según canal
     const fields = (this.rootEl || this.container).querySelectorAll('.lcs-field, [data-channels]');
     fields.forEach(el => {
       const dataset = (el as HTMLElement).dataset;
@@ -398,12 +410,10 @@ export class LowNoiseContactSuite {
         if (el.classList.contains('lcs-field')) {
           el.classList.toggle('lcs-field--hidden', hidden);
         } else {
-          // Modo enhance: ocultar el input y su label asociada
           const input = el as HTMLElement;
           input.style.display = hidden ? 'none' : '';
           const label = document.querySelector(`label[for="${input.id}"]`) as HTMLElement;
           if (label) label.style.display = hidden ? 'none' : '';
-          // También ocultar el contenedor padre si es un div/span
           const parent = input.parentElement;
           if (parent && parent.tagName !== 'FORM' && !parent.classList.contains('lcs-field')) {
             parent.style.display = hidden ? 'none' : '';
@@ -431,7 +441,7 @@ export class LowNoiseContactSuite {
     });
   }
 
-  // ================== Validación (síncrona y asíncrona) ==================
+  // ================== Validación ==================
   private async validateField(field: FieldConfig, value: string): Promise<string | null> {
     if (field.required && !value.trim()) {
       return field.errorMessage || this.i18n.fieldRequired;
@@ -495,20 +505,14 @@ export class LowNoiseContactSuite {
 
   // ================== Antispam ==================
   private checkAntispam(formData: FormData): boolean {
-    if (this.config.antispam.honeypot !== false) {
+    if (this.config.antispam.honeypot) {
       const hpValue = formData.get(this.honeypotName);
       if (hpValue && (hpValue as string).trim().length > 0) {
-        if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') console.log('[LCS] Honeypot triggered');
         return false;
       }
     }
     const elapsed = (Date.now() - this.loadTime) / 1000;
-    const minTime = this.config.antispam.minTime || 3;
-    if (elapsed < minTime) {
-      if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') console.log(`[LCS] Time trap: ${elapsed.toFixed(1)}s < ${minTime}s`);
-      return false;
-    }
-    return true;
+    return elapsed >= this.config.antispam.minTime;
   }
 
   // ================== Envío ==================
@@ -537,11 +541,10 @@ export class LowNoiseContactSuite {
       if (!adapter) throw new Error(`Unknown channel: ${this.currentChannel}`);
       const response = await adapter.send(channelConfig, formData);
       this.showStatus('success', this.i18n.successDefault);
-      if (this.config.ui.resetOnSuccess !== false) {
+      if (this.config.ui.resetOnSuccess) {
         this.formEl.reset();
         this.clearErrors();
       }
-      // Poner foco en el mensaje de estado
       this.statusEl?.focus();
       if (this.config.onSuccess) this.config.onSuccess(this.currentChannel, response, formData);
       if (channelConfig.onSuccess) channelConfig.onSuccess(this.currentChannel, response, formData);

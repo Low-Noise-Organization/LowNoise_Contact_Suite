@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Local - LowNoise Contact Suite</title>
+    <!-- CSS local -->
+    <link rel="stylesheet" href="./low-noise-contact-suite.css">
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+        h2 {
+            margin-top: 30px;
+            color: #1e293b;
+        }
+        #log-container {
+            width: 100%;
+            max-width: 600px;
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .log-entry {
+            border-bottom: 1px solid #334155;
+            padding: 4px 0;
+        }
+        .log-error { color: #f87171; }
+        .log-warn  { color: #fbbf24; }
+        .log-log   { color: #60a5fa; }
+        button {
+            margin: 10px 5px;
+            padding: 8px 16px;
+            border: none;
+            background: #4f46e5;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #4338ca;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 style="color:#1e293b;">🧪 Prueba Local - LowNoise Contact Suite</h1>
+    <div id="contact-form"></div>
+
+    <h2>📋 Logs de depuración</h2>
+    <div id="log-container"></div>
+    <button id="clear-logs">Limpiar logs</button>
+    <button id="copy-logs">Copiar logs</button>
+
+    <!-- Carga de la librería desde carpeta local -->
+    <script src="./dist/low-noise-contact-suite.js"></script>
+    <script>
+        // ----- CAPTURA DE CONSOLA -----
+        const logContainer = document.getElementById('log-container');
+        const originalConsole = {
+            log: console.log,
+            warn: console.warn,
+            error: console.error
+        };
+
+        function addLog(level, ...args) {
+            const msg = args.map(arg => {
+                if (typeof arg === 'object') {
+                    try { return JSON.stringify(arg, null, 2); } catch(e) { return String(arg); }
+                }
+                return String(arg);
+            }).join(' ');
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry log-' + level;
+            entry.textContent = `[${level.toUpperCase()}] ${msg}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            if (originalConsole[level]) {
+                originalConsole[level](...args);
+            }
+        }
+
+        console.log = (...args) => addLog('log', ...args);
+        console.warn = (...args) => addLog('warn', ...args);
+        console.error = (...args) => addLog('error', ...args);
+
+        window.addEventListener('error', (event) => {
+            addLog('error', event.error ? event.error.stack : event.message);
+        });
+        window.addEventListener('unhandledrejection', (event) => {
+            addLog('error', 'Unhandled rejection: ' + (event.reason ? event.reason.stack || event.reason : ''));
+        });
+
+        // ----- BOTONES DE LOGS -----
+        document.getElementById('clear-logs').addEventListener('click', () => {
+            logContainer.innerHTML = '';
+        });
+        document.getElementById('copy-logs').addEventListener('click', () => {
+            const text = logContainer.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Logs copiados al portapapeles. Pega en tu conversación con el asistente.');
+            }).catch(() => {
+                alert('No se pudo copiar automáticamente. Selecciona el texto manualmente.');
+            });
+        });
+
+        // ----- INICIALIZACIÓN -----
+        try {
+            if (typeof LowNoiseContactSuite === 'undefined') {
+                throw new Error('La librería no se cargó. ¿Está corriendo un servidor local?');
+            }
+
+            console.log('Librería cargada correctamente. Inicializando...');
+
+            new LowNoiseContactSuite({
+                container: '#contact-form',
+                channels: [
+                    {
+                        type: 'whatsapp',
+                        number: '34123456789',
+                        messageTemplate: 'Hola, soy {name}. {message}'
+                    },
+                    {
+                        type: 'emailjs',
+                        publicKey: 'TEST_PUBLIC_KEY',
+                        serviceId: 'TEST_SERVICE_ID',
+                        templateId: 'TEST_TEMPLATE_ID'
+                    }
+                ],
+                fields: [
+                    { name: 'name', type: 'text', label: 'Nombre', required: true },
+                    { name: 'email', type: 'email', label: 'Email', required: true },
+                    { name: 'message', type: 'textarea', label: 'Mensaje', required: true }
+                ],
+                ui: {
+                    theme: 'default',
+                    resetOnSuccess: true
+                }
+            });
+
+            console.log('Formulario inicializado con éxito.');
+        } catch (err) {
+            console.error('Error al inicializar:', err.message || err);
+        }
+    </script>
+</body>
+</html>
