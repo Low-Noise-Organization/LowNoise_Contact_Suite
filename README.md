@@ -17,13 +17,22 @@ Supports **WhatsApp**, **EmailJS**, **Discord**, **Telegram**, **Slack**, **Webh
 
 ## Installation
 
-### CDN
+### CDN (desde GitHub)
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/low-noise-contact-suite/low-noise-contact-suite.css">
-<script src="https://cdn.jsdelivr.net/npm/low-noise-contact-suite/dist/low-noise-contact-suite.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Low-Noise-Organization/LowNoise_Contact_Suite@latest/low-noise-contact-suite.css">
+<script src="https://cdn.jsdelivr.net/gh/Low-Noise-Organization/LowNoise_Contact_Suite@latest/dist/low-noise-contact-suite.js"></script>
 ```
 
-### npm
+### CDN + Auto-init (sin escribir JS)
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Low-Noise-Organization/LowNoise_Contact_Suite@latest/low-noise-contact-suite.css">
+<script src="https://cdn.jsdelivr.net/gh/Low-Noise-Organization/LowNoise_Contact_Suite@latest/dist/low-noise-contact-suite.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/Low-Noise-Organization/LowNoise_Contact_Suite@latest/dist/vanilla-auto-init.js"></script>
+
+<div data-lcs data-lcs-channels='[{"type":"whatsapp","number":"34123456789"}]'></div>
+```
+
+### npm (cuando esté publicado)
 ```bash
 npm install low-noise-contact-suite
 ```
@@ -33,11 +42,24 @@ import LowNoiseContactSuite from 'low-noise-contact-suite';
 import 'low-noise-contact-suite/low-noise-contact-suite.css';
 ```
 
-## Quick Start
+### GitHub directo (sin npm)
+```bash
+npm install github:Low-Noise-Organization/LowNoise_Contact_Suite
+```
 
+```js
+import LowNoiseContactSuite from 'low-noise-contact-suite';
+import 'low-noise-contact-suite/low-noise-contact-suite.css';
+```
+
+## Framework Support
+
+### Vanilla JS (HTML/CSS/JS)
+
+**Option A — Programmatic (recommended):**
 ```html
 <div id="contact-form"></div>
-
+<script src="https://cdn.jsdelivr.net/npm/low-noise-contact-suite/dist/low-noise-contact-suite.js"></script>
 <script>
   new LowNoiseContactSuite({
     container: '#contact-form',
@@ -47,6 +69,111 @@ import 'low-noise-contact-suite/low-noise-contact-suite.css';
     ]
   });
 </script>
+```
+
+**Option B — Declarative (auto-init via data attributes):**
+No JS needed. Load the auto-init script after the main bundle:
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/low-noise-contact-suite/low-noise-contact-suite.css">
+<script src="https://cdn.jsdelivr.net/npm/low-noise-contact-suite/dist/low-noise-contact-suite.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/low-noise-contact-suite/dist/vanilla-auto-init.js"></script>
+
+<!-- Option B1: Inline JSON config -->
+<div data-lcs data-lcs-channels='[{"type":"whatsapp","number":"34123456789"}]'></div>
+
+<!-- Option B2: Per-channel data attributes -->
+<div data-lcs data-lcs-channel-types="whatsapp,emailjs"
+     data-lcs-whatsapp-number="34123456789"
+     data-lcs-emailjs-public-key="YOUR_KEY"
+     data-lcs-emailjs-service-id="SERVICE_ID"
+     data-lcs-emailjs-template-id="TEMPLATE_ID"></div>
+
+<!-- Option B3: External JSON config -->
+<div data-lcs data-lcs-config="/config/contact.json"></div>
+```
+
+### React
+
+**`<ContactSuite>` component:**
+```tsx
+import { ContactSuite } from 'low-noise-contact-suite/react';
+import 'low-noise-contact-suite/low-noise-contact-suite.css';
+
+export default function ContactPage() {
+  return (
+    <ContactSuite
+      channels={[
+        { type: 'whatsapp', number: '34123456789' },
+        { type: 'emailjs', publicKey: '...', serviceId: '...', templateId: '...' }
+      ]}
+      onSuccess={(channel, res) => console.log('Sent via', channel)}
+    />
+  );
+}
+```
+
+**`useContactSuite` hook (for custom layouts):**
+```tsx
+import { useRef } from 'react';
+import { useContactSuite } from 'low-noise-contact-suite/react';
+import 'low-noise-contact-suite/low-noise-contact-suite.css';
+
+export default function CustomContact() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { setChannel, reset } = useContactSuite({
+    container: ref.current,
+    channels: [{ type: 'whatsapp', number: '34123456789' }],
+  });
+
+  return (
+    <div>
+      <button onClick={() => setChannel('whatsapp')}>Switch</button>
+      <button onClick={reset}>Reset</button>
+      <div ref={ref} />
+    </div>
+  );
+}
+```
+
+### Angular
+
+**Standalone component (Angular 14+):**
+```typescript
+import { Component } from '@angular/core';
+import { ContactSuiteComponent } from 'low-noise-contact-suite/angular';
+
+@Component({
+  selector: 'app-contact',
+  standalone: true,
+  imports: [ContactSuiteComponent],
+  template: `
+    <lib-contact-suite
+      [channels]="channels"
+      (onSuccess)="handleSuccess($event)">
+    </lib-contact-suite>
+  `,
+})
+export class ContactComponent {
+  channels = [
+    { type: 'whatsapp', number: '34123456789' } as const,
+    { type: 'emailjs', publicKey: '...', serviceId: '...', templateId: '...' } as const,
+  ];
+
+  handleSuccess(event: any) {
+    console.log('Sent!', event);
+  }
+}
+```
+
+**With NgModule:**
+```typescript
+import { NgModule } from '@angular/core';
+import { ContactSuiteModule } from 'low-noise-contact-suite/angular';
+
+@NgModule({
+  imports: [ContactSuiteModule],
+})
+export class AppModule {}
 ```
 
 ## Configuration

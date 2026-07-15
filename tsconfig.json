@@ -3,6 +3,7 @@
     "target": "ES2020",
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "declaration": true,
     "declarationDir": "./dist",
     "strict": true,
@@ -15,5 +16,6 @@
     "skipLibCheck": true,
     "types": ["jest"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/angular/"]
 }

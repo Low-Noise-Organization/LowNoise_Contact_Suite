@@ -396,7 +396,6 @@ export class LowNoiseContactSuite {
   }
 
   private updateChannelUI(): void {
-    const meta = CHANNEL_META[this.currentChannel] || CHANNEL_META.webhook;
     if (this.btnEl) {
       const btnMap: Record<string, string> = {
         whatsapp: this.i18n.btnWhatsapp,
