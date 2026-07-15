@@ -1,9 +1,11 @@
+import { LowNoiseContactSuite } from '../../src/core/LowNoiseContactSuite';
+
 describe('Antispam', () => {
-  let instance: any;
+  let instance: LowNoiseContactSuite;
 
   beforeEach(() => {
     document.body.innerHTML = '<div id="root"></div>';
-    instance = new (require('../../src/core/LowNoiseContactSuite').LowNoiseContactSuite)({
+    instance = new LowNoiseContactSuite({
       container: '#root',
       channels: [{ type: 'webhook', proxyUrl: 'http://test' }],
       antispam: { honeypot: true, minTime: 3 },
@@ -14,19 +16,19 @@ describe('Antispam', () => {
 
   it('bloquea si el honeypot está relleno', () => {
     const formData = new FormData();
-    formData.append(instance.honeypotName, 'bot');
-    expect(instance.checkAntispam(formData)).toBe(false);
+    formData.append((instance as any).honeypotName, 'bot');
+    expect((instance as any).checkAntispam(formData)).toBe(false);
   });
 
   it('bloquea si se envía demasiado rápido', () => {
-    instance.loadTime = Date.now(); // menos de 3s
+    (instance as any).loadTime = Date.now();
     const formData = new FormData();
-    expect(instance.checkAntispam(formData)).toBe(false);
+    expect((instance as any).checkAntispam(formData)).toBe(false);
   });
 
   it('permite si pasa las comprobaciones', () => {
-    instance.loadTime = Date.now() - 4000;
+    (instance as any).loadTime = Date.now() - 4000;
     const formData = new FormData();
-    expect(instance.checkAntispam(formData)).toBe(true);
+    expect((instance as any).checkAntispam(formData)).toBe(true);
   });
 });

@@ -33,7 +33,7 @@ describe('EmailJS Adapter', () => {
 
 describe('Proxy Adapter', () => {
   it('debe hacer fetch al proxy con el payload correcto', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
+    (globalThis as any).fetch = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ok: true }),
@@ -48,6 +48,6 @@ describe('Proxy Adapter', () => {
       method: 'POST',
       body: JSON.stringify({ field1: 'value1' }),
     }));
-    (global.fetch as any).mockRestore();
+    ((globalThis as any).fetch as jest.Mock).mockRestore();
   });
 });

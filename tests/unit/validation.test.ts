@@ -8,6 +8,7 @@ describe('Validación', () => {
     instance = new LowNoiseContactSuite({
       container: '#root',
       channels: [{ type: 'whatsapp', number: '123' }],
+      i18n: { lang: 'es' },
       fields: [
         { name: 'name', type: 'text', required: true },
         { name: 'email', type: 'email', required: true },
@@ -25,7 +26,7 @@ describe('Validación', () => {
     input.value = '';
     const valid = await (instance as any).validateAll();
     expect(valid).toBe(false);
-    expect(document.querySelector('#lcs-error-name')?.textContent).toContain('requerido');
+    expect(document.querySelector('#lcs-error-name')?.textContent).toContain('obligatorio');
   });
 
   it('debe validar email', async () => {

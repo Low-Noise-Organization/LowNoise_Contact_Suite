@@ -45,13 +45,18 @@ export interface I18nStrings {
   [key: string]: string;
 }
 
+export interface I18nConfig {
+  lang?: string;
+  overrides?: Partial<I18nStrings>;
+}
+
 export interface ContactSuiteConfig {
   container: string | HTMLElement;
   channels: ChannelConfig[];
   fields?: FieldConfig[];
   ui?: UIConfig;
   antispam?: AntispamConfig;
-  i18n?: Partial<I18nStrings>;
+  i18n?: I18nConfig;
   onBeforeSubmit?: (channel: string, formData: FormData) => boolean | void;
   onSuccess?: (channel: string, response: any, formData: FormData) => void;
   onError?: (channel: string, error: Error, formData: FormData) => void;

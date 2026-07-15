@@ -1,4 +1,4 @@
-import type { ContactSuiteConfig, ChannelConfig, FieldConfig, ChannelType, UIConfig, AntispamConfig } from './types';
+import type { ContactSuiteConfig, ChannelConfig, FieldConfig, ChannelType, UIConfig, AntispamConfig, I18nConfig } from './types';
 import { resolveLanguage, defaultI18n } from './i18n';
 import { adapters } from './adapters';
 import { WhatsAppAdapter } from '../adapters/WhatsAppAdapter';
@@ -46,7 +46,7 @@ interface InternalConfig {
   fields: FieldConfig[];
   ui: UIConfig; // Cambio aquí: no Required
   antispam: Required<AntispamConfig>;
-  i18n?: Partial<import('./types').I18nStrings>; // Cambio aquí: Partial<I18nStrings>
+  i18n?: I18nConfig;
   onBeforeSubmit?: (channel: string, formData: FormData) => boolean | void;
   onSuccess?: (channel: string, response: any, formData: FormData) => void;
   onError?: (channel: string, error: Error, formData: FormData) => void;
@@ -118,12 +118,12 @@ export class LowNoiseContactSuite {
   }
 
   private buildI18n(): Record<string, string> {
-    const lang = resolveLanguage(this.config.i18n?._lang);
+    const lang = resolveLanguage(this.config.i18n?.lang);
     const base = { ...defaultI18n[lang] };
-    if (this.config.i18n) {
-      Object.keys(this.config.i18n).forEach(key => {
-        if (key !== '_lang' && this.config.i18n![key] !== undefined) {
-          base[key] = this.config.i18n![key] as string;
+    if (this.config.i18n?.overrides) {
+      Object.entries(this.config.i18n.overrides).forEach(([key, value]) => {
+        if (value !== undefined) {
+          base[key] = value;
         }
       });
     }
@@ -200,6 +200,15 @@ export class LowNoiseContactSuite {
         }
         if (field.channels) {
           input.setAttribute('data-channels', field.channels.join(','));
+        }
+        if (field.options && input instanceof HTMLSelectElement) {
+          input.innerHTML = '';
+          field.options.forEach(opt => {
+            const optionEl = document.createElement('option');
+            optionEl.value = opt.value;
+            optionEl.textContent = opt.label;
+            input.appendChild(optionEl);
+          });
         }
       }
     });
@@ -548,11 +557,11 @@ export class LowNoiseContactSuite {
       this.statusEl?.focus();
       if (this.config.onSuccess) this.config.onSuccess(this.currentChannel, response, formData);
       if (channelConfig.onSuccess) channelConfig.onSuccess(this.currentChannel, response, formData);
-    } catch (err: any) {
-      const message = err.message || this.i18n.errorDefault;
-      this.showStatus('error', message);
-      if (this.config.onError) this.config.onError(this.currentChannel, err, formData);
-      if (channelConfig.onError) channelConfig.onError(this.currentChannel, err, formData);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.showStatus('error', error.message);
+      if (this.config.onError) this.config.onError(this.currentChannel, error, formData);
+      if (channelConfig.onError) channelConfig.onError(this.currentChannel, error, formData);
     } finally {
       this.setLoading(false);
     }

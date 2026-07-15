@@ -8,7 +8,7 @@ export default {
       file: 'dist/low-noise-contact-suite.js',
       format: 'umd',
       name: 'LowNoiseContactSuite',
-      exports: 'default',       
+      exports: 'default',
       sourcemap: true,
     },
     {
@@ -20,8 +20,8 @@ export default {
   plugins: [
     typescript({
       tsconfig: './tsconfig.json',
-      declaration: true,
-      declarationDir: './dist',
+      declaration: false,
+      declarationDir: undefined,
     }),
     terser(),
   ],

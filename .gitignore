@@ -3,3 +3,6 @@ node_modules/
 storybook-static/
 cypress/videos/
 cypress/screenshots/
+coverage/
+dist/
+.eslintcache

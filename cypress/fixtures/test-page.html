@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Page</title>
+  <link rel="stylesheet" href="../../low-noise-contact-suite.css" />
+</head>
+<body>
+  <div id="contact-form"></div>
+  <script src="../../dist/low-noise-contact-suite.js"></script>
+  <script>
+    new LowNoiseContactSuite({
+      container: '#contact-form',
+      channels: [
+        { type: 'whatsapp', number: '34123456789' },
+        { type: 'webhook', proxyUrl: 'http://localhost:3000/api' }
+      ],
+      fields: [
+        { name: 'name', type: 'text', label: 'Name', required: true },
+        { name: 'email', type: 'email', label: 'Email', required: true, channels: ['webhook'] },
+        { name: 'message', type: 'textarea', label: 'Message', required: true }
+      ]
+    });
+  </script>
+</body>
+</html>
